@@ -1,16 +1,13 @@
 import rasterio
 from rasterio import MemoryFile
-from rasterio.plot import show
 import rasterio.mask
 from rasterio.transform import Affine
-from rasterio.crs import CRS
 import geopandas as gpd
 import time
 import numpy as np
-from shapely.geometry import shape
 from shapely.geometry import Polygon
 from owslib.wcs import WebCoverageService
-from countries import countries
+from terrainy.countries import countries
 
 
 def wcs_connect(wcs_service, version):
@@ -18,7 +15,8 @@ def wcs_connect(wcs_service, version):
     return wcs
 
 def getDTM(country, area_shape, tif_res, out_path):
-    wcs = wcs_connect(countries[country], countries[country][2])
+    print(countries[country], countries[country][2])
+    wcs = wcs_connect(countries[country][0], countries[country][1])
     shapefile = gpd.read_file(area_shape)
 
     if shapefile.crs == "EPSG:25833":
