@@ -18,7 +18,7 @@ def getDTM(country, area_shape, tif_res, out_path):
     wcs = wcs_connect(countries[country][0], countries[country][1])
     shapefile = gpd.read_file(area_shape)
 
-    if shapefile.crs == "EPSG:25833":
+    if shapefile.crs == countries[country][3]:
         print('Working on getting your data..')
         xmin, ymin, xmax, ymax = shapefile.total_bounds
 
