@@ -15,13 +15,11 @@ def wcs_connect(wcs_service, version):
     return wcs
 
 def getDTM(country, area_shape, tif_res, out_path):
-    print(countries[country], countries[country][2])
     wcs = wcs_connect(countries[country][0], countries[country][1])
     shapefile = gpd.read_file(area_shape)
 
     if shapefile.crs == "EPSG:25833":
         print('Working on getting your data..')
-        tic = time.perf_counter()
         xmin, ymin, xmax, ymax = shapefile.total_bounds
 
         # Grid sizing
@@ -80,7 +78,7 @@ def getDTM(country, area_shape, tif_res, out_path):
                     'tiled': False,
                     'interleave': 'band'}
 
-        print('Finished packaging data, export your tif below')
+        print('Finished packaging data, exporting...')
 
     else:
         print('Shapefile CRS is %s, please load one in epsg:25833' % (shapefile.crs))
@@ -88,8 +86,7 @@ def getDTM(country, area_shape, tif_res, out_path):
     with rasterio.open(out_path, 'w', **ras_meta) as tif:
         tif.write(array, indexes=1)
 
-    toc = time.perf_counter()
-    print(f"Downloaded the tif in {toc - tic:0.4f} seconds")
+    print("Data successfully downloaded!")
 
 
 
