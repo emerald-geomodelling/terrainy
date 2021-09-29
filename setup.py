@@ -22,6 +22,7 @@ setuptools.setup(
         "shapely",
         "fiona",
         "owslib",
-        "numpy"
+        "numpy",
+        "rtree"
     ],
 )

@@ -14,6 +14,13 @@ def wcs_connect(wcs_service, version):
     wcs = WebCoverageService(wcs_service, version=version)
     return wcs
 
+
+def getMaps(gdf, terrainy_shp):
+
+    result = terrainy_shp.loc[terrainy_shp.contains(gdf)]
+    return result
+
+
 def getDTM(country, area_shape, tif_res, out_path):
     wcs = wcs_connect(countries[country][0], countries[country][1])
     shapefile = gpd.read_file(area_shape)
