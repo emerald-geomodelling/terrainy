@@ -15,7 +15,7 @@ setuptools.setup(
     url='https://github.com/emerald-geomodelling/terrainy',
     packages=setuptools.find_packages(),
     include_package_data=True,
-    package_data={'terrainy': ['*/*.shp']},
+    package_data={'terrainy': ['*/*.geojson']},
     install_requires=[
         "rasterio",
         "geopandas",

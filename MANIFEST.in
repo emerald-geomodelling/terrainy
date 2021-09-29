@@ -1,5 +1,3 @@
-include */*.shp
-include */*.dbf
-include */*.prj
-include */*.cpg
-include */*.shx
+include */*.geojson
+
+
