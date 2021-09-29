@@ -8,12 +8,17 @@ import numpy as np
 from shapely.geometry import Polygon
 from owslib.wcs import WebCoverageService
 from terrainy.countries import countries
+import pkg_resources
 
+def _read_shp(f):
+    return gpd.read_file(f)
+
+with pkg_resources.resource_stream("terrainy", "terrainy_data.shp") as f:
+    method = _read_shp(f)
 
 def wcs_connect(wcs_service, version):
     wcs = WebCoverageService(wcs_service, version=version)
     return wcs
-
 
 def getMaps(gdf, terrainy_shp):
 
