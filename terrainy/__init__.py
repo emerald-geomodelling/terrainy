@@ -19,17 +19,17 @@ import json
 def _read_shp(f):
     return gpd.read_file(f)
 
-with pkg_resources.resource_stream("terrainy", "terrainy_data.geojson") as f:
-    terrainy_shp = _read_shp(f)
+with pkg_resources.resource_stream("terrainy", "terrainy_datasource_20210930.geojson") as f:
+    terrainy_shp = _read_shp(f).set_index("title")
 
 # Used to get the WCS service, can inspect contents of wcs
-def wcs_connect(wcs_service, version):
+def wcs_connect(wcs_service, version, title):
     wcs = WebCoverageService(wcs_service, version=version)
-    return wcs
+    return wcs, wcs[title]
 
 # Returns the available map sources available from your input shapefile
 def getMaps(gdf):
-    result = terrainy_shp.loc[terrainy_shp.contains(gdf)]
+    result = terrainy_shp.loc[terrainy_shp.contains(gdf["geometry"][0])]
     return result
 
 # Returns the shape you want to use to get data from, based on the title
@@ -62,15 +62,13 @@ def export(data_dict, out_path):
 
 
 def getDTM(gdf, title, tif_res):
-    data  = terrainy_shp.loc[terrainy_shp["title"]==title]
+    data  = terrainy_shp.loc[title]
 
-    #wcs = wcs_connect(**json.loads(data.loc[0]["connection"]))
-    wcs = wcs_connect(data["connection"][0]["wcs_service"], version=data["connection"][0]["version"])
-
+    wcs, layer = wcs_connect(**data["connection_args"])
     print('Working on getting your data..')
 
     # Convert data back to WCS crs
-    gdf = gdf.to_crs(data["crs_orig"][0])
+    gdf = gdf.to_crs(data["crs_orig"])
     xmin, ymin, xmax, ymax = gdf.total_bounds
 
     # Grid sizing
@@ -100,11 +98,11 @@ def getDTM(gdf, title, tif_res):
             polygon = (Polygon(
                 [(x, y), (x + tile_m_width, y), (x + tile_m_width, y + tile_m_length), (x, y + tile_m_length)]))
 
-            c = wcs["dtm_25833"]
+            c = layer
 
             response = wcs.getCoverage(
                 identifier=c.id,
-                crs=data["crs_orig"][0],
+                crs=data["crs_orig"],
                 bbox=polygon.bounds,
                 resx=tif_res, resy=tif_res,
                 format='GeoTIFF')

@@ -4,16 +4,25 @@ Contains tools to get user defined resolution DTM's covering available countries
 Example:
 
 `import terrainy`\
-`from terrainy import  getDTM, countries`
+`from terrainy import  terrainy_shp, download, getMaps, wcs_connection, export `
 
-`print(countries)`
+Load the shapefile you'd like to get a terrain surface for
 
-`output: {'Norway': ['https://wcs.geonorge.no/skwms1/wcs.hoyde-dtm-nhm-25833?service=wcs&request=getcapabilities',
-  '1.0.0',
-  'dtm_25833',
-  'EPSG:25833']}`
+`df = gpd.read_file("/Users/eh/Desktop/shp_25833_lol.shp")`
 
-With the example of Norway's 1m DTM
+Make sure it is in WGS84 / EPSG:4326 if it isnt already\
 
-`getDTM("Norway", "/User/defined/shapefile/inEPSG25833.shp', 1, /Out/path/DTM.tif)`
+`df = df.to_crs("EPSG:4326")`
+
+To see where terrainy has available data for your shapefile\
+`data = getMaps(df)`\
+`print(data)`
+
+With the example of a DTM of Norway at 1m resolution
+
+`data_dict = download(df, "Norway DTM", 1)`
+
+Export your file to your local drive
+
+`export(data_dict, "/Users/eh/Desktop/fun.tif"))`
 
