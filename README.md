@@ -4,7 +4,7 @@ Contains tools to get user defined resolution DTM's covering available countries
 Example:
 
 `import terrainy`\
-`from terrainy import  terrainy_shp, download, getMaps, wcs_connection, export `
+`from terrainy import  terrainy_shp, download, getMaps, wcs_connect, export `
 
 Load the shapefile you'd like to get a terrain surface for
 
