@@ -50,7 +50,7 @@ def export(data_dict, out_path):
                 'width': data_dict["array"].shape[1],
                 'height': data_dict["array"].shape[0],
                 'count': 1,
-                'crs': data_dict["data"]["crs_orig"][0],
+                'crs': data_dict["data"]["crs_orig"],
                 'transform': data_dict["transform"],
                 'tiled': False,
                 'interleave': 'band'}
