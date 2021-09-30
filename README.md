@@ -8,7 +8,7 @@ Example:
 
 Load the shapefile you'd like to get a terrain surface for
 
-`df = gpd.read_file("/Users/eh/Desktop/shp_25833_lol.shp")`
+`df = gpd.read_file("/path/to/some_area_of_interest_polygon.shp")`
 
 Make sure it is in WGS84 / EPSG:4326 if it isnt already\
 
@@ -24,5 +24,5 @@ With the example of a DTM of Norway at 1m resolution
 
 Export your file to your local drive
 
-`export(data_dict, "/Users/eh/Desktop/fun.tif"))`
+`export(data_dict, "/path/to/dtm_for_some_area.tif"))`
 
