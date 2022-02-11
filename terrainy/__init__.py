@@ -45,7 +45,7 @@ def download(gdf, title, tif_res):
 def export(data_dict, out_path):
     print('Packaging your data...')
     ras_meta = {'driver': 'GTiff',
-                'dtype': 'float32',
+                'dtype': data_dict["array"].dtype,
                 'nodata': None,
                 'width': data_dict["array"].shape[1],
                 'height': data_dict["array"].shape[0],
