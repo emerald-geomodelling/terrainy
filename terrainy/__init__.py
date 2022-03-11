@@ -144,7 +144,7 @@ def getImagery(gdf, title, tif_res):
     nr_cols = int(np.ceil(width / tile_pixel_length))
     nr_rows = int(np.ceil(length / tile_pixel_width))
 
-    array = np.zeros((3, tile_pixel_length * nr_rows, tile_pixel_width * nr_cols))
+    array = np.zeros((3, tile_pixel_length * nr_rows, tile_pixel_width * nr_cols)).astype('uint8')
 
     for x_idx in range(nr_cols):
         for y_idx in range(nr_rows):
@@ -178,7 +178,7 @@ def getImagery(gdf, title, tif_res):
 def export_imagery(data_dict, out_path, clip=False):
     print('Exporting your data...')
     ras_meta = {'driver': 'GTiff',
-                'dtype': 'float64',
+                'dtype': data_dict["array"].dtype,
                 'nodata': None,
                 'width': data_dict["array"].shape[2],
                 'height': data_dict["array"].shape[1],
