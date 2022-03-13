@@ -6,6 +6,7 @@ from rasterio import MemoryFile
 from rasterio.plot import show
 import rasterio.mask
 from rasterio.transform import Affine
+import rasterio.rio.clip
 from rasterio.crs import CRS
 import geopandas as gpd
 import time
@@ -13,6 +14,7 @@ import numpy as np
 from shapely.geometry import Polygon
 from owslib.wcs import WebCoverageService
 import pkg_resources
+import shapely
 import json
 
 def _read_shp(f):
@@ -46,7 +48,7 @@ def download(gdf, title, tif_res):
     return data_dict
 
 # Writes your file to a given output path
-def export_terrain(data_dict, out_path, clip=False):
+def export_terrain(data_dict, out_path):
     print('Packaging your data...')
     ras_meta = {'driver': 'GTiff',
                 'dtype': data_dict["array"].dtype,
@@ -61,7 +63,7 @@ def export_terrain(data_dict, out_path, clip=False):
 
     with rasterio.open(out_path, 'w', **ras_meta) as tif:
         tif.write(data_dict["array"], indexes=1)
-
+    clip_to_bounds(out_path, data_dict["gdf"])
     print('Finished packaging data')
 
 
@@ -175,7 +177,7 @@ def getImagery(gdf, title, tif_res):
     print("Satellite data successfully downloaded!")
     return {"array":array, "transform":transform, "data":data, "gdf":gdf}
 
-def export_imagery(data_dict, out_path, clip=False):
+def export_imagery(data_dict, out_path):
     print('Exporting your data...')
     ras_meta = {'driver': 'GTiff',
                 'dtype': data_dict["array"].dtype,
@@ -190,10 +192,23 @@ def export_imagery(data_dict, out_path, clip=False):
 
     with rasterio.open(out_path, 'w', **ras_meta) as dst:
         dst.write(data_dict["array"])
-        dst.close()
+    clip_to_bounds(file=out_path, area=data_dict)
     print('Data exported!')
 
-# fixme: Make clipping work
+def clip_to_bounds(file, area):
+    with rasterio.open(file) as src:
+        bounds = shapely.geometry.box(**area.to_crs(src.crs).bounds.iloc[0].astype(int))
+        out_image, out_transform = rasterio.mask.mask(src, [bounds], filled=False, crop=True)
+        out_meta = src.meta.copy()
+    out_meta.update({
+        "driver": "GTiff",
+        "height": out_image.shape[1],
+        "width": out_image.shape[2],
+        "transform": out_transform})
+    with rasterio.open(file, "w", **out_meta) as dest:
+        dest.write(out_image)
+
+# fixme: Make clipping work to actual shape
 # def getFeatures(gdf):
 #     """Function to parse features from GeoDataFrame in such a manner that rasterio wants them, from
 #     https: // automating - gis - processes.github.io / CSC18 / lessons / L6 / clipping - raster.html"""
