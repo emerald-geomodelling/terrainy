@@ -32,7 +32,7 @@ def wcs_connect(wcs_service, version, title):
 # Used to get the WCS service, can inspect contents of wcs
 def wms_connect(wms_service, title):
     wms = WebMapService(wms_service)
-    return wms, title
+    return wms, wms[title]
 
 # Returns the available map sources available from your input shapefile
 def getMaps(gdf):
@@ -70,9 +70,7 @@ def export_terrain(data_dict, out_path):
 
 def getDTM(gdf, title, tif_res):
     data  = terrainy_shp.loc[title]
-
-    wcs, layer = wms_connect(**data["connection_args"])
-    print('Working on getting your data..')
+    wcs, layer = wcs_connect(**data["connection_args"])
 
     # Convert data back to WCS crs
     gdf = gdf.to_crs(data["crs_orig"])
@@ -91,8 +89,6 @@ def getDTM(gdf, title, tif_res):
     nr_cols = int(np.ceil(width / tile_pixel_length))
     nr_rows = int(np.ceil(length / tile_pixel_width))
 
-    polygons = []
-
     array = np.zeros((tile_pixel_length * nr_rows, tile_pixel_width * nr_cols))
 
     for x_idx in range(nr_cols):
@@ -105,10 +101,8 @@ def getDTM(gdf, title, tif_res):
             polygon = (Polygon(
                 [(x, y), (x + tile_m_width, y), (x + tile_m_width, y + tile_m_length), (x, y + tile_m_length)]))
 
-            c = layer
-
             response = wcs.getCoverage(
-                identifier=c.id,
+                identifier=layer.id,
                 crs=data["crs_orig"],
                 bbox=polygon.bounds,
                 resx=tif_res, resy=tif_res,
@@ -123,20 +117,19 @@ def getDTM(gdf, title, tif_res):
 
 
     transform = Affine.translation(xmin, ymax) * Affine.scale(tif_res, -tif_res)
-    print("Data successfully downloaded!")
     return {"array":array, "transform":transform, "data":data, "gdf":gdf}
 
 def getImagery(gdf, title, tif_res):
     data  = terrainy_shp.loc[title]
     wms, layer = wms_connect(**data["connection_args"])
-    print('Working on getting your data..')
-    #Convert data back to WCS crs
-    gdf = gdf.to_crs(3857)
 
+    # Convert data back to WCS crs
+    gdf = gdf.to_crs(data["crs_orig"])
     xmin, ymin, xmax, ymax = gdf.total_bounds
 
-    tile_pixel_length = 2048
-    tile_pixel_width = 2048
+    # Grid sizing
+    tile_pixel_length = 1024
+    tile_pixel_width = 1024
 
     tile_m_length = tile_pixel_length * tif_res
     tile_m_width = tile_pixel_width * tif_res
@@ -159,15 +152,13 @@ def getImagery(gdf, title, tif_res):
             polygon = (Polygon(
                 [(x, y), (x + tile_m_width, y), (x + tile_m_width, y + tile_m_length), (x, y + tile_m_length)]))
 
-            gdf = gpd.GeoDataFrame(index=[0], crs='epsg:3857', geometry=[polygon])
+            response = wms.getmap(layers=[layer.id],
+                                  srs="EPSG:%s" % data["crs_orig"],
+                                  bbox=polygon.bounds,
+                                  size=(tile_pixel_width, tile_pixel_length),
+                                  format='image/GeoTIFF')
 
-            image = wms.getmap(layers=[layer],
-                               srs='EPSG:3857',
-                               bbox=polygon.bounds,
-                               size=(2048, 2048),
-                               format='image/GeoTIFF')
-
-            with MemoryFile(image) as memfile:
+            with MemoryFile(response) as memfile:
                 with memfile.open() as dataset:
                     data_array = dataset.read()
 
@@ -175,7 +166,6 @@ def getImagery(gdf, title, tif_res):
                     x_idx * tile_pixel_length:x_idx * tile_pixel_length + tile_pixel_length] = data_array[:, :, :]
 
     transform = Affine.translation(xmin, ymax) * Affine.scale(tif_res, -tif_res)
-    print("Satellite data successfully downloaded!")
     return {"array":array, "transform":transform, "data":data, "gdf":gdf}
 
 def export_imagery(data_dict, out_path):
