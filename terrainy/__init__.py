@@ -18,6 +18,10 @@ import pkg_resources
 import shapely
 import json
 
+# Grid sizing
+tile_pixel_length = 1024
+tile_pixel_width = 1024
+
 def _read_shp(f):
     return gpd.read_file(f)
 
@@ -76,10 +80,6 @@ def getDTM(gdf, title, tif_res):
     gdf = gdf.to_crs(data["crs_orig"])
     xmin, ymin, xmax, ymax = gdf.total_bounds
 
-    # Grid sizing
-    tile_pixel_length = 1024
-    tile_pixel_width = 1024
-
     tile_m_length = tile_pixel_length * tif_res
     tile_m_width = tile_pixel_width * tif_res
 
@@ -89,7 +89,7 @@ def getDTM(gdf, title, tif_res):
     nr_cols = int(np.ceil(width / tile_pixel_length))
     nr_rows = int(np.ceil(length / tile_pixel_width))
 
-    array = np.zeros((tile_pixel_length * nr_rows, tile_pixel_width * nr_cols))
+    array = np.zeros((1, tile_pixel_length * nr_rows, tile_pixel_width * nr_cols))
 
     for x_idx in range(nr_cols):
         for y_idx in range(nr_rows):
@@ -112,9 +112,8 @@ def getDTM(gdf, title, tif_res):
                 with memfile.open() as dataset:
                     data_array = dataset.read()
 
-                    array[y_idx * tile_pixel_width:y_idx * tile_pixel_width + tile_pixel_width,
-                    x_idx * tile_pixel_length:x_idx * tile_pixel_length + tile_pixel_length] = data_array[0, :, :]
-
+                    array[:, y_idx * tile_pixel_width:y_idx * tile_pixel_width + tile_pixel_width,
+                    x_idx * tile_pixel_length:x_idx * tile_pixel_length + tile_pixel_length] = data_array[:, :, :]
 
     transform = Affine.translation(xmin, ymax) * Affine.scale(tif_res, -tif_res)
     return {"array":array, "transform":transform, "data":data, "gdf":gdf}
@@ -126,10 +125,6 @@ def getImagery(gdf, title, tif_res):
     # Convert data back to WCS crs
     gdf = gdf.to_crs(data["crs_orig"])
     xmin, ymin, xmax, ymax = gdf.total_bounds
-
-    # Grid sizing
-    tile_pixel_length = 1024
-    tile_pixel_width = 1024
 
     tile_m_length = tile_pixel_length * tif_res
     tile_m_width = tile_pixel_width * tif_res
