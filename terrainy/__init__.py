@@ -12,6 +12,7 @@ import time
 import numpy as np
 from shapely.geometry import Polygon
 from owslib.wcs import WebCoverageService
+from owslib.wms import WebMapService
 import pkg_resources
 import json
 
@@ -27,9 +28,9 @@ def wcs_connect(wcs_service, version, title):
     return wcs, wcs[title]
 
 # Used to get the WCS service, can inspect contents of wcs
-def wms_connect(wms_service, version, title):
-    wcs = WebCoverageService(wms_service, version=version)
-    return wcs, wcs[title]
+def wms_connect(wms_service, title):
+    wms = WebMapService(wms_service)
+    return wms, title
 
 # Returns the available map sources available from your input shapefile
 def getMaps(gdf):
@@ -68,7 +69,7 @@ def export_terrain(data_dict, out_path, clip=False):
 def getDTM(gdf, title, tif_res):
     data  = terrainy_shp.loc[title]
 
-    wcs, layer = wcs_connect(**data["connection_args"])
+    wcs, layer = wms_connect(**data["connection_args"])
     print('Working on getting your data..')
 
     # Convert data back to WCS crs
@@ -125,7 +126,7 @@ def getDTM(gdf, title, tif_res):
 
 def getImagery(gdf, title, tif_res):
     data  = terrainy_shp.loc[title]
-    wms, layer = wcs_connect(**data["connection_args"])
+    wms, layer = wms_connect(**data["connection_args"])
     print('Working on getting your data..')
     #Convert data back to WCS crs
     gdf = gdf.to_crs(3857)
