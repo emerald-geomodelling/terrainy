@@ -18,101 +18,13 @@ import pkg_resources
 import shapely
 import json
 
-# Grid sizing
-tile_pixel_length = 1024
-tile_pixel_width = 1024
-
-def _read_shp(f):
-    return gpd.read_file(f)
-
-with pkg_resources.resource_stream("terrainy", "terrainy_datasource_20210930.geojson") as f:
-    terrainy_shp = _read_shp(f).set_index("title")
-        
-class Connection(object):
-    def __init__(self, **kw):
-        self.kw = kw
-
-    def download(self, gdf, tif_res):
-        # Convert data back to crs of map
-        gdf = gdf.to_crs(self.kw["crs_orig"])
-        xmin, ymin, xmax, ymax = gdf.total_bounds
-
-        tile_m_length = tile_pixel_length * tif_res
-        tile_m_width = tile_pixel_width * tif_res
-
-        width = (xmax - xmin) / tif_res
-        length = (ymax - ymin) / tif_res
-
-        nr_cols = int(np.ceil(width / tile_pixel_length))
-        nr_rows = int(np.ceil(length / tile_pixel_width))
-
-        array = np.zeros((self.bands, tile_pixel_length * nr_rows, tile_pixel_width * nr_cols), dtype=self.dtype)
-
-        for x_idx in range(nr_cols):
-            for y_idx in range(nr_rows):
-                print('Working on block %s,%s of %s,%s' % (x_idx + 1, y_idx + 1, nr_cols, nr_rows))
-
-                x = xmin + x_idx * tile_m_width
-                y = ymax - y_idx * tile_m_length - tile_m_length
-
-                polygon = (Polygon(
-                    [(x, y), (x + tile_m_width, y), (x + tile_m_width, y + tile_m_length), (x, y + tile_m_length)]))
-
-                response = self.download_tile(polygon.bounds, tif_res, (tile_pixel_width, tile_pixel_length))
-
-                with MemoryFile(response) as memfile:
-                    with memfile.open() as dataset:
-                        data_array = dataset.read()
-
-                        array[:, y_idx * tile_pixel_width:y_idx * tile_pixel_width + tile_pixel_width,
-                        x_idx * tile_pixel_length:x_idx * tile_pixel_length + tile_pixel_length] = data_array[:, :, :]
-
-        transform = Affine.translation(xmin, ymax) * Affine.scale(tif_res, -tif_res)
-        return {"array":array, "transform":transform, "data":self.kw, "gdf":gdf}
+from . import connection
+from . import sources
     
-
-class WcsConnection(Connection):
-    bands = 1
-    dtype = "float64"
-    
-    def __init__(self, **kw):
-        Connection.__init__(self, **kw)
-        self.wcs = WebCoverageService(**self.kw["connection_args"])
-        self.layer = self.wcs[self.kw["layer"]]
-
-    def download_tile(self, bounds, tif_res, size):
-        return self.wcs.getCoverage(
-            identifier=self.layer.id,
-            crs=self.kw["crs_orig"],
-            bbox=bounds,
-            resx=tif_res, resy=tif_res,
-            format='GeoTIFF')
-
-class WmsConnection(Connection):
-    bands = 3
-    dtype = "uint8"
-    
-    def __init__(self, **kw):
-        Connection.__init__(self, **kw)
-        self.wms = WebMapService(**self.kw["connection_args"])
-        self.layer = self.wms[self.kw["layer"]]
-
-    def download_tile(self, bounds, tif_res, size):
-        return self.wms.getmap(layers=[self.layer.id],
-                               srs="EPSG:%s" % self.kw["crs_orig"],
-                               bbox=bounds,
-                               size=size,
-                               format='image/GeoTIFF')
-
 def download(gdf, title, tif_res):
     "Downloads raster data for a shape from a given source"
-    data  = terrainy_shp.loc[title]
-    if data.connection_type == "wcs":
-        con = WcsConnection(**data)
-    elif data.connection_type == "wms":
-        con = WmsConnection(**data)
-    else:
-        raise NotImplementedError("Unknown connection type")
+    data  = sources.load().loc[title]
+    con = connection.connect(**data)
     return con.download(gdf, tif_res)
 
 def clip_to_bounds(file, area):
@@ -147,11 +59,13 @@ def export(data_dict, out_path):
 
 def getMaps(gdf):
     "Returns the available map sources available from your input shapefile"
-    return terrainy_shp.loc[terrainy_shp.contains(gdf["geometry"][0])]
+    s = sources.load()
+    return s.loc[s.contains(gdf["geometry"][0])]
 
 def chooseMap(title):
     "Returns the shape you want to use to get data from, based on the title"
-    return terrainy_shp.loc[terrainy_shp["title"]==title]
+    s = sources.load()
+    return s.loc[s["title"]==title]
 
 def getDTM(gdf, title, tif_res):
     return download(gdf, title, tif_res)

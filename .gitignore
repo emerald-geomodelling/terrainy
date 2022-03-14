@@ -1,0 +1,5 @@
+*~
+*.pyc
+*.tif
+*.egg-info
+.ipynb_checkpoints
