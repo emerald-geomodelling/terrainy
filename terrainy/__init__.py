@@ -57,27 +57,23 @@ def export(data_dict, out_path):
     clip_to_bounds(out_path, data_dict["gdf"])
 
 
-def getMaps(gdf):
+def get_maps(gdf):
     "Returns the available map sources available from your input shapefile"
     s = sources.load()
     return s.loc[s.contains(gdf["geometry"][0])]
 
-def chooseMap(title):
+def choose_map(title):
     "Returns the shape you want to use to get data from, based on the title"
     s = sources.load()
     return s.loc[s["title"]==title]
 
-def getDTM(gdf, title, tif_res):
-    return download(gdf, title, tif_res)
-
-def getImagery(gdf, title, tif_res):
-    return download(gdf, title, tif_res)
-
-def export_terrain(data_dict, out_path):
-    export(data_dict, out_path)
-
-def export_imagery(data_dict, out_path):
-    export(data_dict, out_path)
+# Legacy names
+getMaps = get_maps
+chooseMap = choose_map
+getDTM = download
+getImagery = download
+export_terrain = export
+export_imagery = export
 
     
 # fixme: Make clipping work to actual shape

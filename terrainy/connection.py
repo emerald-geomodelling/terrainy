@@ -18,6 +18,7 @@ import pkg_resources
 import importlib.metadata
 import shapely
 import json
+import contextlib
 
 # Grid sizing
 tile_pixel_length = 1024
@@ -29,22 +30,36 @@ class Connection(object):
 
     def get_shape(self):
         bbox = self.get_bounds()
-        response = self.download_tile(bbox,
-                                      (bbox[2] - bbox[0]) / tile_pixel_width,
-                                      (tile_pixel_width, tile_pixel_length))
-
-        with MemoryFile(response) as memfile:
-            with memfile.open() as dataset:
-                data_array = dataset.read()
+        empty_bbox = list(bbox)
+        w = empty_bbox[2] - empty_bbox[0]
+        empty_bbox[0] -= w
+        empty_bbox[2] -= w
+        with self.open_tile(empty_bbox,
+                            (empty_bbox[2] - empty_bbox[0]) / tile_pixel_width,
+                            (tile_pixel_width, tile_pixel_length)) as dataset:
+            empty_data_array = dataset.read()
+        
+        with self.open_tile(bbox,
+                            (bbox[2] - bbox[0]) / tile_pixel_width,
+                            (tile_pixel_width, tile_pixel_length)) as dataset:
+            data_array = dataset.read()
+            transform = dataset.transform
         
         geometry = [shapely.geometry.shape(shp)
-                    for shp, val in rasterio.features.shapes((data_array != 0).astype("int16"), transform=dataset.transform)
+                    for shp, val in rasterio.features.shapes((data_array != empty_data_array).max(axis=0).astype("int16"), transform=transform)
                     if val > 0]
         
         return gpd.GeoDataFrame(
             geometry = [gpd.GeoDataFrame(geometry = geometry).geometry.unary_union]
         ).set_crs(self.get_crs())
 
+    @contextlib.contextmanager
+    def open_tile(self, *arg, **kw):
+        response = self.download_tile(*arg, **kw)
+        with MemoryFile(response) as memfile:
+            with memfile.open() as dataset:
+                yield dataset
+    
     def download(self, gdf, tif_res):
         # Convert data back to crs of map
         gdf = gdf.to_crs(self.get_crs())
@@ -71,14 +86,11 @@ class Connection(object):
                 polygon = (Polygon(
                     [(x, y), (x + tile_m_width, y), (x + tile_m_width, y + tile_m_length), (x, y + tile_m_length)]))
 
-                response = self.download_tile(polygon.bounds, tif_res, (tile_pixel_width, tile_pixel_length))
+                with self.open_tile(polygon.bounds, tif_res, (tile_pixel_width, tile_pixel_length)) as dataset:
+                    data_array = dataset.read()
 
-                with MemoryFile(response) as memfile:
-                    with memfile.open() as dataset:
-                        data_array = dataset.read()
-
-                        array[:, y_idx * tile_pixel_width:y_idx * tile_pixel_width + tile_pixel_width,
-                        x_idx * tile_pixel_length:x_idx * tile_pixel_length + tile_pixel_length] = data_array[:, :, :]
+                    array[:, y_idx * tile_pixel_width:y_idx * tile_pixel_width + tile_pixel_width,
+                          x_idx * tile_pixel_length:x_idx * tile_pixel_length + tile_pixel_length] = data_array[:, :, :]
 
         transform = Affine.translation(xmin, ymax) * Affine.scale(tif_res, -tif_res)
         return {"array":array, "transform":transform, "data":self.kw, "gdf":gdf}

@@ -22,4 +22,4 @@ class WcsConnection(connection.Connection):
         return self.layer.boundingboxes[0]["bbox"]
         
     def get_crs(self):
-        return con.layer.boundingboxes[0]["nativeSrs"]
+        return self.layer.boundingboxes[0]["nativeSrs"]
