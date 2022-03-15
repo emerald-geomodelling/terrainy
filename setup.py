@@ -23,6 +23,16 @@ setuptools.setup(
         "fiona",
         "owslib",
         "numpy",
-        "rtree"
+        "rtree",
+        "click"
     ],
+    entry_points={
+        'terrainy.connection': [
+            'wcs = terrainy.connection_wcs:WcsConnection',
+            'wms = terrainy.connection_wms:WmsConnection',
+        ],
+        'console_scripts': [
+            'terrainy = terrainy.cmd:main',
+        ],
+    },
 )

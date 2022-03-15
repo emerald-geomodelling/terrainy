@@ -19,17 +19,25 @@ def source():
     pass
 
 @source.command()
-# @click.option('--informat', default="sgf", help='Input format: %s' % ", ".join(parsers.keys()))
+@click.option('--long', is_flag=True, default=False)
 # @click.option('--outformat', default="sgf", help='Ouput format: %s' % ", ".join(dumpers.keys()))
 # @click.argument('input', type=str)
 # @click.argument('output', type=str)
-def list():
+def list(long=False):
     s = sources.load()
-    s = s.join(s.geometry.bounds)
-
+    #s = s.join(s.geometry.bounds)
+    s["bbox"] = s.geometry.bounds.apply(lambda row: "%(minx).4f,%(miny).4f,%(maxx).4f,%(maxy).4f" % row, axis=1)
+    
+    s["url"] = s.connection_args.apply(lambda a: a["url"])
     s = s.drop(columns=["connection_args", "geometry"])
 
-    print(s)
+    maincols = ["layer", "connection_type", "url", "crs_orig", "bbox"]
+    if long:
+        cols = maincols + sorted(set(s.columns) - set(maincols))
+    else:
+        cols = maincols
+
+    print(s[cols])
     
 @source.command()
 @click.argument('title', type=str)
