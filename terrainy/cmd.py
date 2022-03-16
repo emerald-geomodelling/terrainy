@@ -2,6 +2,7 @@ import click
 import pandas as pd
 import geopandas as gpd
 import json
+import yaml
 
 from . import sources
 from . import connection
@@ -46,10 +47,11 @@ def list(long=False):
 @click.argument('layer', type=str)
 def add(**kw):
     kw["connection_args"] = json.loads(kw["connection_args"])
-    con = connection.connect(**kw)
-    kw["crs_orig"] = con.get_crs()
-    kw["geometry"] = con.get_shape().to_crs(4326).iloc[0].geometry
-    s = sources.load()
-    s.loc[kw.pop("title")] = kw
-    sources.dump(s)
-
+    sources.add_source(**kw)
+    
+@source.command()
+@click.argument('yamlfile', type=str)
+def add_mapproxy(yamlfile):
+    with open(yamlfile) as f:
+        data = yaml.load(f, Loader=yaml.Loader)
+    sources.add_mapproxy(data)

@@ -43,8 +43,10 @@ class Connection(object):
                             (bbox[2] - bbox[0]) / tile_pixel_width,
                             (tile_pixel_width, tile_pixel_length)) as dataset:
             data_array = dataset.read()
-            transform = dataset.transform
-        
+
+        xres = (bbox[2] - bbox[0]) / tile_pixel_width
+        yres = (bbox[3] - bbox[1]) / tile_pixel_length
+        transform = rasterio.transform.Affine.translation(bbox[0], bbox[3]) * rasterio.transform.Affine.scale(xres, -yres)            
         geometry = [shapely.geometry.shape(shp)
                     for shp, val in rasterio.features.shapes((data_array != empty_data_array).max(axis=0).astype("int16"), transform=transform)
                     if val > 0]
