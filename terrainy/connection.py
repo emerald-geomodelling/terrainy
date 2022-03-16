@@ -50,6 +50,8 @@ class Connection(object):
         geometry = [shapely.geometry.shape(shp)
                     for shp, val in rasterio.features.shapes((data_array != empty_data_array).max(axis=0).astype("int16"), transform=transform)
                     if val > 0]
+        if not len(geometry):
+            raise ValueError("Map has only empty tiles!")
         
         return gpd.GeoDataFrame(
             geometry = [gpd.GeoDataFrame(geometry = geometry).geometry.unary_union]
