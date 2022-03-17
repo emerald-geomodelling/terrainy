@@ -8,7 +8,7 @@ from . import connection
 sources_path = os.path.expanduser("~/.config/terrainy/sources.geojson")
 
 def load():
-    with pkg_resources.resource_stream("terrainy", "terrainy_datasource_20210930.geojson") as f:
+    with pkg_resources.resource_stream("terrainy", "sources.geojson") as f:
         sources = gpd.read_file(f).set_index("title")
     if os.path.exists(sources_path):
         with open(sources_path, "rb") as f:
@@ -34,14 +34,28 @@ def add_source(**kw):
 
 def add_mapproxy(data):
     for title, spec in data["sources"].items():
-        if "req" in spec and "url" in spec["req"]:
+        try:
+            args = {"title": title, "connection_type": spec["type"], "connection_args": {}}
+            if "url" in spec:
+                args["connection_args"]["url"] = spec["url"]
+            if "req" in spec:
+                if "url" in spec["req"]:
+                    args["connection_args"]["url"] = spec["req"]["url"]
+                if "layers" in spec["req"]:
+                    args["layer"] = spec["req"]["layers"]
+            if "grid" in spec:
+                grid = spec["grid"]
+                if grid == "GLOBAL_WEBMERCATOR":
+                    args["crs_orig"] = "EPSG:3857"
+                else:
+                    args["crs_orig"] = data["grids"][grid]["srs"]
+        except Exception as e:
+            print("Parser error for source %s: %s" % (title, e))
+            print("\n".join(("    " + line for line in traceback.format_exc().split("\n"))))
+        else:
             try:
-                add_source(
-                    title=title,
-                    connection_type = spec["type"],
-                    connection_args = {"url": spec["req"]["url"]},
-                    layer = spec["req"]["layers"])
+                add_source(**args)
             except Exception as e:
-                print("Unable to add source %s/%s: %s: %s" % (
-                    title, spec["req"]["layers"], spec["req"]["url"], e))
-                traceback.print_exc()
+                print("Unable to add source %s: %s: %s" % (
+                    title, args, e))
+                print("\n".join(("    " + line for line in traceback.format_exc().split("\n"))))

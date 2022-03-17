@@ -30,7 +30,7 @@ setuptools.setup(
         'terrainy.connection': [
             'wcs = terrainy.connection_wcs:WcsConnection',
             'wms = terrainy.connection_wms:WmsConnection',
-            'xyz = terrainy.connection_xyz:XyzConnection',
+            'tile = terrainy.connection_tile:TileConnection',
         ],
         'console_scripts': [
             'terrainy = terrainy.cmd:main',

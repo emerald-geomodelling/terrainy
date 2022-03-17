@@ -60,6 +60,7 @@ def export(data_dict, out_path):
 def get_maps(gdf):
     "Returns the available map sources available from your input shapefile"
     s = sources.load()
+    s = s.loc[s.geometry.is_valid]
     return s.loc[s.contains(gdf["geometry"][0])]
 
 def choose_map(title):
