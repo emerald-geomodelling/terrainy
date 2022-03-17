@@ -24,6 +24,7 @@ setuptools.setup(
         "owslib",
         "numpy",
         "rtree",
+        "contextily",
         "click"
     ],
     entry_points={
