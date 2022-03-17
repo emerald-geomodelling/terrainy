@@ -15,7 +15,6 @@ class TileConnection(connection.Connection):
 
         args = {"name": "", "attribution": ""}
         args.update(self.kw["connection_args"])
-        args["url"] = args["url"].replace("%(", "{").replace(")s", "}")
         
         self.source = xyzservices.lib.TileProvider(**args)
 

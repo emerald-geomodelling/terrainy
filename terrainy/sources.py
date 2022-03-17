@@ -43,6 +43,10 @@ def add_mapproxy(data):
                     args["connection_args"]["url"] = spec["req"]["url"]
                 if "layers" in spec["req"]:
                     args["layer"] = spec["req"]["layers"]
+
+            if "url" in args["connection_args"]:
+                args["connection_args"]["url"] = args["connection_args"]["url"].replace("%(", "{").replace(")s", "}")
+
             if "grid" in spec:
                 grid = spec["grid"]
                 if grid == "GLOBAL_WEBMERCATOR":
