@@ -5,7 +5,7 @@ import os
 
 setuptools.setup(
     name='terrainy',
-    version='0.0.1',
+    version='0.0.2',
     description='Auto-downloader for global terrain data',
     long_description="""Library to generate rasterised images of 
     global height data such as DTM's. """,
