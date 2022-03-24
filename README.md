@@ -1,28 +1,34 @@
 # terrainy
-Contains tools to get user defined resolution DTM's covering available countries
 
-Example:
+A downloader library for global terrain data and satellite imagery. It
+will download a raster of global height data such as a DTM, or
+satellite imagery for a polygon.
 
-`import terrainy`\
-`from terrainy import  terrainy_shp, download, getMaps, wcs_connect, export `
 
-Load the shapefile you'd like to get a terrain surface for
+# Example usage
 
-`df = gpd.read_file("/path/to/some_area_of_interest_polygon.shp")`
+A more detailed usage guide is available in the [example usage
+notebook](docs/Example usage.ipynb).
 
-Make sure it is in WGS84 / EPSG:4326 if it isnt already\
+`import terrainy`
 
-`df = df.to_crs("EPSG:4326")`
+Load the shapefile you'd like to get a terrain surface for and convert its coordinates to WGS84 / EPSG:4326:
 
-To see where terrainy has available data for your shapefile\
-`data = getMaps(df)`\
-`print(data)`
+```
+df = gpd.read_file("some_area_of_interest_polygon.shp").to_crs("EPSG:4326")
+```
 
-With the example of a DTM of Norway at 1m resolution
+To see what data terrainy has available for your shapefile
 
-`data_dict = download(df, "Norway DTM", 1)`
+```
+print(terrainy.get_maps(df))
+```
 
-Export your file to your local drive
+Download from a DTM of Norway at 1m resolution and export as a GeoTIFF
+file:
 
-`export(data_dict, "/path/to/dtm_for_some_area.tif"))`
+```
+data_dict = terrainy.download(df, "Norway DTM", 1)
+terrainy.export(data_dict, "dtm_for_some_area.tif"))
+```
 

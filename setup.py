@@ -5,10 +5,10 @@ import os
 
 setuptools.setup(
     name='terrainy',
-    version='0.0.2',
-    description='Auto-downloader for global terrain data',
-    long_description="""Library to generate rasterised images of 
-    global height data such as DTM's. """,
+    version='0.0.3',
+    description='Auto-downloader for global terrain data and satellite imagery',
+    long_description="""Library to download a raster of 
+    global height data such as a DTM, or satellite imagery for a polygon.""",
     long_description_content_type="text/markdown",
     author='Ed Harrison',
     author_email='eh@emrld.no',
