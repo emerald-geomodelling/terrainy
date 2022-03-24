@@ -25,6 +25,7 @@ setuptools.setup(
         "numpy",
         "rtree",
         "contextily",
+	"xyzservices",
         "click"
     ],
     entry_points={
