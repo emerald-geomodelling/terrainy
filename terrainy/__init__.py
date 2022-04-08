@@ -27,10 +27,14 @@ def download(gdf, title, tif_res):
     con = connection.connect(**data)
     return con.download(gdf, tif_res)
 
-def clip_to_bounds(file, area):
+def clip_to_area(file, area, to_bounds=True):
     with rasterio.open(file) as src:
-        bounds = shapely.geometry.box(**area.to_crs(src.crs).bounds.iloc[0].astype(int))
-        out_image, out_transform = rasterio.mask.mask(src, [bounds], filled=False, crop=True)
+        area = area.to_crs(src.crs)
+        if to_bounds:
+            clip = shapely.geometry.box(**area.bounds.iloc[0].astype(int))
+        else:
+            clip = area.geometry[0]
+        out_image, out_transform = rasterio.mask.mask(src, [clip], filled=not to_bounds, crop=True)
         out_meta = src.meta.copy()
     out_meta.update({
         "driver": "GTiff",
@@ -40,7 +44,7 @@ def clip_to_bounds(file, area):
     with rasterio.open(file, "w", **out_meta) as dest:
         dest.write(out_image)
         
-def export(data_dict, out_path):
+def export(data_dict, out_path, clip=False):
     ras_meta = {'driver': 'GTiff',
                 'dtype': data_dict["array"].dtype,
                 'nodata': None,
@@ -54,7 +58,8 @@ def export(data_dict, out_path):
 
     with rasterio.open(out_path, 'w', **ras_meta) as tif:
         tif.write(data_dict["array"])
-    clip_to_bounds(out_path, data_dict["gdf"])
+
+    clip_to_area(out_path, data_dict["gdf"], to_bounds=not clip)
 
 
 def get_maps(gdf):
