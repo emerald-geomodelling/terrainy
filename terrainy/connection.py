@@ -19,14 +19,21 @@ import importlib.metadata
 import shapely
 import json
 import contextlib
+import os.path
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Grid sizing
 tile_pixel_length = 1024
 tile_pixel_width = 1024
 
+cachedir = os.path.expanduser("~/.cache/terrainy")
+
 class Connection(object):
-    def __init__(self, **kw):
+    def __init__(self, cache_tiles=True, **kw):
         self.kw = kw
+        self.cache_tiles = cache_tiles
 
     def get_shape(self):
         bbox = self.get_bounds()
@@ -58,11 +65,27 @@ class Connection(object):
         ).set_crs(self.get_crs())
 
     @contextlib.contextmanager
-    def open_tile(self, *arg, **kw):
-        response = self.download_tile(*arg, **kw)
-        with MemoryFile(response) as memfile:
-            with memfile.open() as dataset:
+    def open_tile(self, bounds, tif_res, size):
+        if self.cache_tiles:
+            cachepath = os.path.join(cachedir, self.kw["title"], str(tif_res), "%s.tif" % (",".join(str(b) for b in bounds),))
+            if not os.path.exists(cachepath):
+                logger.info("Not cached: %s" % (cachepath,))
+                
+                cachedirpath = os.path.split(cachepath)[0]
+                if not os.path.exists(cachedirpath):
+                    os.makedirs(cachedirpath)
+                    
+                response = self.download_tile(bounds, tif_res, size)
+                with open(cachepath, "wb") as f:
+                    f.write(response.read())
+            else:
+                logger.info("Cached: %s" % (cachepath,))
+            with rasterio.open(cachepath) as dataset:
                 yield dataset
+        else:
+            with MemoryFile(response) as memfile:
+                with memfile.open() as dataset:
+                    yield dataset
     
     def download(self, gdf, tif_res):
         # Convert data back to crs of map
@@ -82,7 +105,7 @@ class Connection(object):
 
         for x_idx in range(nr_cols):
             for y_idx in range(nr_rows):
-                print('Working on block %s,%s of %s,%s' % (x_idx + 1, y_idx + 1, nr_cols, nr_rows))
+                logger.info('Working on block %s,%s of %s,%s' % (x_idx + 1, y_idx + 1, nr_cols, nr_rows))
 
                 x = xmin + x_idx * tile_m_width
                 y = ymax - y_idx * tile_m_length - tile_m_length

@@ -24,6 +24,7 @@ from . import sources
 def download(gdf, title, tif_res):
     "Downloads raster data for a shape from a given source"
     data  = sources.load().loc[title]
+    data["title"] = data.name
     con = connection.connect(**data)
     return con.download(gdf, tif_res)
 
@@ -34,9 +35,12 @@ def clip_to_area(file, area, to_bounds=True):
             clip = shapely.geometry.box(**area.bounds.iloc[0].astype(int))
         else:
             clip = area.geometry[0]
-        out_image, out_transform = rasterio.mask.mask(src, [clip], filled=not to_bounds, crop=True)
         out_meta = src.meta.copy()
+        nodata = out_meta.get("nodata", None)
+        if nodata is None: nodata = -10000
+        out_image, out_transform = rasterio.mask.mask(src, [clip], filled=not to_bounds, crop=True, nodata=nodata)
     out_meta.update({
+        "nodata": nodata,
         "driver": "GTiff",
         "height": out_image.shape[1],
         "width": out_image.shape[2],
