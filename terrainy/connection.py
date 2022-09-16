@@ -21,6 +21,7 @@ import json
 import contextlib
 import os.path
 import logging
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -65,33 +66,53 @@ class Connection(object):
         ).set_crs(self.get_crs())
 
     @contextlib.contextmanager
-    def open_tile(self, bounds, tif_res, size):
-        if self.cache_tiles:
-            cachepath = os.path.join(cachedir, self.kw["title"], str(tif_res), "%s.tif" % (",".join(str(b) for b in bounds),))
-            if not os.path.exists(cachepath):
-                logger.info("Not cached: %s" % (cachepath,))
-                
-                cachedirpath = os.path.split(cachepath)[0]
-                if not os.path.exists(cachedirpath):
-                    os.makedirs(cachedirpath)
-                    
-                response = self.download_tile(bounds, tif_res, size)
-                with open(cachepath, "wb") as f:
-                    f.write(response.read())
-            else:
-                logger.info("Cached: %s" % (cachepath,))
-            with rasterio.open(cachepath) as dataset:
-                yield dataset
+    def get_tile_file(self, bounds, tif_res, size = (tile_pixel_width, tile_pixel_length)):
+        cachepath = os.path.join(cachedir, self.kw["title"], str(tif_res), "%s.tif" % (",".join(str(b) for b in bounds),))
+        if not os.path.exists(cachepath):
+            logger.info("Not cached: %s" % (cachepath,))
+
+            cachedirpath = os.path.split(cachepath)[0]
+            if not os.path.exists(cachedirpath):
+                os.makedirs(cachedirpath)
+
+            response = self.download_tile(bounds, tif_res, size)
+            with open(cachepath, "wb") as f:
+                f.write(response.read())
         else:
+            logger.info("Cached: %s" % (cachepath,))
+        yield cachepath
+
+    @contextlib.contextmanager
+    def open_tile(self, bounds, tif_res, size = (tile_pixel_width, tile_pixel_length)):
+        if self.cache_tiles:
+            with self.get_tile_file(bounds, tif_res, size = size) as cachepath:
+                with rasterio.open(cachepath) as dataset:
+                    yield dataset
+        else:
+            response = self.download_tile(bounds, tif_res, size)
             with MemoryFile(response) as memfile:
                 with memfile.open() as dataset:
                     yield dataset
-    
-    def download(self, gdf, tif_res):
-        # Convert data back to crs of map
+
+    def get_tileset_bounds(self, gdf, tif_res):
         gdf = gdf.to_crs(self.get_crs())
         xmin, ymin, xmax, ymax = gdf.total_bounds
 
+        tile_m_length = tile_pixel_length * tif_res
+        tile_m_width = tile_pixel_width * tif_res
+
+        xmin = math.floor(xmin / tile_m_width) * tile_m_width
+        xmax = math.ceil(xmax / tile_m_width) * tile_m_width
+        ymin = math.floor(ymin / tile_m_length) * tile_m_length
+        ymax = math.ceil(ymax / tile_m_length) * tile_m_length
+
+        return xmin, ymin, xmax, ymax
+        
+    def get_tile_bounds(self, gdf, tif_res):
+        # Convert data back to crs of map
+        gdf = gdf.to_crs(self.get_crs())
+        xmin, ymin, xmax, ymax = self.get_tileset_bounds(gdf, tif_res)
+        
         tile_m_length = tile_pixel_length * tif_res
         tile_m_width = tile_pixel_width * tif_res
 
@@ -105,20 +126,29 @@ class Connection(object):
 
         for x_idx in range(nr_cols):
             for y_idx in range(nr_rows):
-                logger.info('Working on block %s,%s of %s,%s' % (x_idx + 1, y_idx + 1, nr_cols, nr_rows))
-
                 x = xmin + x_idx * tile_m_width
                 y = ymax - y_idx * tile_m_length - tile_m_length
 
                 polygon = (Polygon(
                     [(x, y), (x + tile_m_width, y), (x + tile_m_width, y + tile_m_length), (x, y + tile_m_length)]))
 
-                with self.open_tile(polygon.bounds, tif_res, (tile_pixel_width, tile_pixel_length)) as dataset:
-                    data_array = dataset.read()
+                yield x_idx, y_idx, polygon
 
-                    array[:, y_idx * tile_pixel_width:y_idx * tile_pixel_width + tile_pixel_width,
-                          x_idx * tile_pixel_length:x_idx * tile_pixel_length + tile_pixel_length] = data_array[:, :, :]
+                    
+    def download(self, gdf, tif_res):
+        gdf = gdf.to_crs(self.get_crs())
+        
+        # Convert data back to crs of map
+        xmin, ymin, xmax, ymax = self.get_tileset_bounds(gdf, tif_res)
 
+        for x_idx, y_idx, polygon in self.get_tile_bounds(gdf, tif_res):
+            logger.info('Working on block %s,%s of %s,%s' % (x_idx + 1, y_idx + 1, nr_cols, nr_rows))
+            with self.open_tile(polygon.bounds, tif_res, (tile_pixel_width, tile_pixel_length)) as dataset:
+                data_array = dataset.read()
+
+                array[:, y_idx * tile_pixel_width:y_idx * tile_pixel_width + tile_pixel_width,
+                      x_idx * tile_pixel_length:x_idx * tile_pixel_length + tile_pixel_length] = data_array[:, :, :]
+                
         transform = Affine.translation(xmin, ymax) * Affine.scale(tif_res, -tif_res)
         return {"array":array, "transform":transform, "data":self.kw, "gdf":gdf}
 

@@ -20,13 +20,15 @@ import json
 
 from . import connection
 from . import sources
-    
-def download(gdf, title, tif_res):
-    "Downloads raster data for a shape from a given source"
+
+def connect(title):
     data  = sources.load().loc[title]
     data["title"] = data.name
-    con = connection.connect(**data)
-    return con.download(gdf, tif_res)
+    return connection.connect(**data)
+
+def download(gdf, title, tif_res):
+    "Downloads raster data for a shape from a given source"
+    return connect(title).download(gdf, tif_res)
 
 def clip_to_area(file, area, to_bounds=True):
     with rasterio.open(file) as src:
