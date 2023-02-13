@@ -42,7 +42,7 @@ def clip_to_area(file, area, to_bounds=True):
     with rasterio.open(file, "w", **out_meta) as dest:
         dest.write(out_image)
 
-def crop_raster(shape, filename, driver_type=None):
+def crop_raster(shape, filename, shape_crs, driver_type=None):
     """ Crops raster to given shape
         - shape: shapely.geometry object
         - filename: string, filepath, raster to read and save to
@@ -52,6 +52,7 @@ def crop_raster(shape, filename, driver_type=None):
         driver = driver_type
     else:
         driver = "GTiff"
+
     feature_coll = {
         "type": "FeatureCollection",
         "features": [
@@ -59,16 +60,15 @@ def crop_raster(shape, filename, driver_type=None):
                 "id": "0",
                 "type": "Feature",
                 "properties": {"name": "Polygon"},
-                "geometry": mapping(shape),
+                "geometry": mapping(shape)["features"][0]["geometry"],
                 "bbox": shape.bounds
             }
         ]
     }
-    df = gpd.GeoDataFrame.from_features(feature_coll)
-
-    shapes = getFeatures(df)
 
     with rasterio.open(filename) as src:
+        df = gpd.GeoDataFrame.from_features(feature_coll).set_crs(shape_crs).to_crs(src.crs)
+        shapes = getFeatures(df)
         out_image, out_transform = rasterio.mask.mask(src, shapes, nodata=-9999, crop=True)
         out_meta = src.meta
         out_meta.update({"driver": driver,
@@ -110,7 +110,7 @@ def reproject_raster_to_project_crs(filename, out_crs):
                     resampling=Resampling.nearest)
 
 
-def export(data_dict, out_path, out_crs=None, shape=None, crop=None, png=None):
+def export(data_dict, out_path, out_crs=None, shape=None, shape_crs=None, crop=None, png=None):
     if png is True:
         ras_meta = {
             'driver': 'PNG',
@@ -126,7 +126,7 @@ def export(data_dict, out_path, out_crs=None, shape=None, crop=None, png=None):
         with rasterio.open(out_path, 'w', **ras_meta) as png:
             png.write(data_dict["array"][0:3])
         if crop is True:
-            crop_raster(shape, out_path, driver_type="PNG")
+            crop_raster(shape, out_path, shape_crs, driver_type="PNG")
         if out_crs:
             reproject_raster_to_project_crs(out_path, out_crs)
 
