@@ -80,7 +80,7 @@ def crop_raster(file, geom, geom_crs, buffer=None, driver=None):
     shapes = geom_to_gdf(geom, geom_crs, buffer=buffer)
 
     with rasterio.open(file) as src:
-        out_image, out_transform = rasterio.mask.mask(src, shapes, nodata=-9999, crop=True)
+        out_image, out_transform = rasterio.mask.mask(src, shapes, filled=True, crop=True)
         out_meta = src.meta
         out_meta.update({"driver": driver,
                          "height": out_image.shape[1],
