@@ -35,8 +35,8 @@ class TileConnection(connection.Connection):
         array = np.transpose(array, (2, 0, 1))
 
         left, right, bottom, top = extent
-        xres = (right - left) / array.shape[1]
-        yres = (top - bottom) / array.shape[2]
+        xres = (right - left) / array.shape[2]
+        yres = (top - bottom) / array.shape[1]
         
         transform = Affine.translation(left, top) * Affine.scale(xres, -yres)
         data = dict(self.kw)

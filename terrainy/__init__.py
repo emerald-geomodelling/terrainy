@@ -48,16 +48,13 @@ def clip_to_area(file, area, to_bounds=True):
     with rasterio.open(file, "w", **out_meta) as dest:
         dest.write(out_image)
 
-def crop_raster(shape, filename, driver_type=None):
-    """ Crops raster to given shape
-        - shape: shapely.geometry object
-        - filename: string, filepath, raster to read and save to
-        - type: string, options: tif, png"""
 
-    if driver_type:
-        driver = driver_type
-    else:
-        driver = "GTiff"
+def getFeatures(gdf):
+    """Function to parse features from GeoDataFrame in such a manner that rasterio wants them"""
+    return [json.loads(gdf.to_json())['features'][0]['geometry']]
+
+
+def geom_to_gdf(geom, geom_crs, buffer=None):
     feature_coll = {
         "type": "FeatureCollection",
         "features": [
@@ -65,24 +62,38 @@ def crop_raster(shape, filename, driver_type=None):
                 "id": "0",
                 "type": "Feature",
                 "properties": {"name": "Polygon"},
-                "geometry": mapping(shape),
-                "bbox": shape.bounds
+                "geometry": mapping(geom),
+                "bbox": geom.bounds
             }
         ]
     }
     df = gpd.GeoDataFrame.from_features(feature_coll)
+    df = df.set_crs(geom_crs)
+
+    if buffer is not None:
+        df = df.buffer(buffer, resolution=2, join_style=3)
 
     shapes = getFeatures(df)
+    return shapes
 
-    with rasterio.open(filename) as src:
-        out_image, out_transform = rasterio.mask.mask(src, shapes, nodata=-9999, crop=True)
+
+def crop_raster(file, geom, geom_crs, buffer=None, driver=None):
+    if driver:
+        driver = driver
+    else:
+        driver = "GTiff"
+
+    shapes = geom_to_gdf(geom, geom_crs, buffer=buffer)
+
+    with rasterio.open(file) as src:
+        out_image, out_transform = rasterio.mask.mask(src, shapes, filled=True, nodata=-9999, crop=True)
         out_meta = src.meta
         out_meta.update({"driver": driver,
-                         "height": out_image.shape[0],
-                         "width": out_image.shape[1],
+                         "height": out_image.shape[1],
+                         "width": out_image.shape[2],
                          "transform": out_transform})
 
-    with rasterio.open(filename, "w", **out_meta) as dest:
+    with rasterio.open(file, "w", **out_meta) as dest:
         dest.write(out_image)
 
 
@@ -116,8 +127,8 @@ def reproject_raster_to_project_crs(filename, out_crs):
                     resampling=Resampling.nearest)
 
 
-def export(data_dict, out_path, out_crs=None, shape=None, crop=None, png=None):
-    if png is True:
+def export(data_dict, out_path, out_crs, crop_geom=None, crop_geom_crs=None, buffer=None, driver=None):
+    if driver == "PNG":
         ras_meta = {
             'driver': 'PNG',
             'height': data_dict["array"].shape[1],
@@ -131,10 +142,11 @@ def export(data_dict, out_path, out_crs=None, shape=None, crop=None, png=None):
 
         with rasterio.open(out_path, 'w', **ras_meta) as png:
             png.write(data_dict["array"][0:3])
-        if crop is True:
-            crop_raster(shape, out_path, driver_type="PNG")
-        if out_crs:
-            reproject_raster_to_project_crs(out_path, out_crs)
+
+        reproject_raster_to_project_crs(out_path, out_crs)
+        if crop_geom is not None:
+            crop_raster(out_path, crop_geom, crop_geom_crs, buffer=buffer, driver="PNG")
+
 
     else:
         ras_meta = {'driver': 'GTiff',
@@ -150,10 +162,11 @@ def export(data_dict, out_path, out_crs=None, shape=None, crop=None, png=None):
 
         with rasterio.open(out_path, 'w', **ras_meta) as tif:
             tif.write(data_dict["array"])
-        if crop is True:
-            crop_raster(shape, out_path, driver_type="GTiff")
-        if out_crs:
-            reproject_raster_to_project_crs(out_path, out_crs)
+
+        reproject_raster_to_project_crs(out_path, out_crs)
+
+        if crop_geom is not None:
+            crop_raster(out_path, crop_geom, crop_geom_crs, buffer=buffer, driver="GTiff")
 
 
 def get_maps(gdf):
