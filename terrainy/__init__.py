@@ -15,18 +15,18 @@ import json
 from . import connection
 from . import sources
 
-def connect(title):
-    data  = sources.load().loc[title]
-    data["title"] = data.name
-    return connection.connect(**data)
 
 def download(gdf, title, tif_res):
     "Downloads raster data for a shape from a given source"
-    return connect(title).download(gdf, tif_res)
+    data = sources.load().loc[title]
+    con = connection.connect(**data)
+    return con.download(gdf, tif_res)
+
 
 def getFeatures(gdf):
     """Function to parse features from GeoDataFrame in such a manner that rasterio wants them"""
     return [json.loads(gdf.to_json())['features'][0]['geometry']]
+
 
 def clip_to_area(file, area, to_bounds=True):
     with rasterio.open(file) as src:
@@ -35,12 +35,9 @@ def clip_to_area(file, area, to_bounds=True):
             clip = shapely.geometry.box(**area.bounds.iloc[0].astype(int))
         else:
             clip = area.geometry[0]
+        out_image, out_transform = rasterio.mask.mask(src, [clip], filled=not to_bounds, crop=True)
         out_meta = src.meta.copy()
-        nodata = out_meta.get("nodata", None)
-        if nodata is None: nodata = -10000
-        out_image, out_transform = rasterio.mask.mask(src, [clip], filled=not to_bounds, crop=True, nodata=nodata)
     out_meta.update({
-        "nodata": nodata,
         "driver": "GTiff",
         "height": out_image.shape[1],
         "width": out_image.shape[2],
@@ -175,10 +172,12 @@ def get_maps(gdf):
     s = s.loc[s.geometry.is_valid]
     return s.loc[s.contains(gdf["geometry"][0])]
 
+
 def choose_map(title):
     "Returns the shape you want to use to get data from, based on the title"
     s = sources.load()
-    return s.loc[s["title"]==title]
+    return s.loc[s["title"] == title]
+
 
 # Legacy names
 getMaps = get_maps
@@ -188,7 +187,6 @@ getImagery = download
 export_terrain = export
 export_imagery = export
 
-    
 # fixme: Make clipping work to actual shape
 # def getFeatures(gdf):
 #     """Function to parse features from GeoDataFrame in such a manner that rasterio wants them, from
