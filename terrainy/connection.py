@@ -19,13 +19,17 @@ import importlib.metadata
 import shapely
 import json
 import contextlib
+import os
 
 # Grid sizing
 tile_pixel_length = 1024
 tile_pixel_width = 1024
 
+cachedir = os.path.expanduser("~/.cache/terrainy")
+#fixme: Intergrate caching
+
 class Connection(object):
-    def __init__(self, **kw):
+    def __init__(self,  **kw):
         self.kw = kw
 
     def get_shape(self):
