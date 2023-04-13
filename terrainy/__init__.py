@@ -111,17 +111,20 @@ def reproject_raster_to_project_crs(filename, out_crs):
             'width': width,
             'height': height
         })
+        bands = [src.read(i) for i in range(1, src.count + 1)]
+        src_crs = src.crs
+        dst_transform = transform
 
-        with rasterio.open(filename, 'w', **kwargs) as dst:
-            for i in range(1, src.count + 1):
-                reproject(
-                    source=rasterio.band(src, i),
-                    destination=rasterio.band(dst, i),
-                    src_transform=src.transform,
-                    src_crs=src.crs,
-                    dst_transform=transform,
-                    dst_crs=dst_crs,
-                    resampling=Resampling.nearest)
+    with rasterio.open(filename, 'w', **kwargs) as dst:
+        for i, band in enumerate(bands):
+            reproject(
+                source=band,
+                destination=rasterio.band(dst, i + 1),
+                src_transform=src.transform,
+                src_crs=src_crs,
+                dst_transform=dst_transform,
+                dst_crs=dst_crs,
+                resampling=Resampling.nearest)
 
 
 def export(data_dict, out_path, out_crs, crop_geom=None, crop_geom_crs=None, buffer=None, driver=None):
