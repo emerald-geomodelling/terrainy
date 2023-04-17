@@ -2,4 +2,6 @@
 *.pyc
 *.tif
 *.egg-info
+build
+dist
 .ipynb_checkpoints
