@@ -94,12 +94,15 @@ def crop_raster(file, geom, geom_crs, buffer=None, driver=None):
         dest.write(out_image)
 
 
-def reproject_raster_to_project_crs(filename, out_crs):
+def reproject_raster_to_project_crs(filename, out_crs, resampling=None):
     """ reproject an image to a new crs:
         inputs:
         filename: string, path to file to reproject
         out_crs: int, epsg code of destination crs"""
     dst_crs = ('EPSG:' + str(out_crs))
+
+    if not resampling:
+        resampling = Resampling.nearest
 
     with rasterio.open(filename) as src:
         transform, width, height = calculate_default_transform(
@@ -124,10 +127,10 @@ def reproject_raster_to_project_crs(filename, out_crs):
                 src_crs=src_crs,
                 dst_transform=dst_transform,
                 dst_crs=dst_crs,
-                resampling=Resampling.nearest)
+                resampling=resampling)
 
 
-def export(data_dict, out_path, out_crs, crop_geom=None, crop_geom_crs=None, buffer=None, driver=None):
+def export(data_dict, out_path, out_crs, crop_geom=None, crop_geom_crs=None, buffer=None, driver=None, resampling=None):
     if driver == "PNG":
         ras_meta = {
             'driver': 'PNG',
@@ -143,7 +146,7 @@ def export(data_dict, out_path, out_crs, crop_geom=None, crop_geom_crs=None, buf
         with rasterio.open(out_path, 'w', **ras_meta) as png:
             png.write(data_dict["array"][0:3])
 
-        reproject_raster_to_project_crs(out_path, out_crs)
+        reproject_raster_to_project_crs(out_path, out_crs, resampling=resampling)
         if crop_geom is not None:
             crop_raster(out_path, crop_geom, crop_geom_crs, buffer=buffer, driver="PNG")
 
@@ -163,7 +166,7 @@ def export(data_dict, out_path, out_crs, crop_geom=None, crop_geom_crs=None, buf
         with rasterio.open(out_path, 'w', **ras_meta) as tif:
             tif.write(data_dict["array"])
 
-        reproject_raster_to_project_crs(out_path, out_crs)
+        reproject_raster_to_project_crs(out_path, out_crs, resampling=resampling)
 
         if crop_geom is not None:
             crop_raster(out_path, crop_geom, crop_geom_crs, buffer=buffer, driver="GTiff")
