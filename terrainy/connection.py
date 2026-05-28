@@ -14,7 +14,6 @@ import numpy as np
 from shapely.geometry import Polygon
 from owslib.wcs import WebCoverageService
 from owslib.wms import WebMapService
-import pkg_resources
 import importlib.metadata
 import shapely
 import json
